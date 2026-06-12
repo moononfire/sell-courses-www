@@ -34,13 +34,10 @@ jobs:
           # Wymagane żeby Next.js build nie failował przy brakujących kluczach.
           # W CI nie mamy prawdziwych wartości — używamy placeholderów.
           NEXT_PUBLIC_APP_URL: http://localhost:3000
-          NEXT_PUBLIC_SUPABASE_URL: https://placeholder.supabase.co
-          NEXT_PUBLIC_SUPABASE_ANON_KEY: placeholder
-          SUPABASE_SERVICE_ROLE_KEY: placeholder
+          DATABASE_URL: postgresql://placeholder:placeholder@localhost/placeholder
+          AUTH_SECRET: placeholder_secret_min_32_chars_long_xxxxxxxxx
           STRIPE_SECRET_KEY: sk_test_placeholder
           NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: pk_test_placeholder
           STRIPE_WEBHOOK_SECRET: whsec_placeholder
           RESEND_API_KEY: re_placeholder
           RESEND_FROM_EMAIL: noreply@example.com
-          VERCEL_ACCESS_TOKEN: placeholder
-          VERCEL_PROJECT_ID: placeholder
