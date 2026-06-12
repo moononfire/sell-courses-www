@@ -4,7 +4,7 @@ import { getStripe } from "@/lib/stripe/client";
 import { db } from "@/lib/db";
 import { purchases, purchaseSeriesAccess, bundleSeries, series, users, passwordResetTokens } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
-import { sendSetPasswordEmail } from "@/lib/resend/send";
+import { sendSetPasswordEmail, sendPurchaseConfirmationEmail } from "@/lib/resend/send";
 
 export async function POST(request: NextRequest) {
   const body = await request.text();
@@ -94,19 +94,25 @@ export async function POST(request: NextRequest) {
         }
       }
 
-      // Send set-password email for new (guest) users
-      if (isNewUser) {
+      const productName = type === "series" && meta.seriesId
+        ? (await db.select({ title: series.title }).from(series).where(eq(series.id, meta.seriesId)).limit(1))[0]?.title ?? "kurs"
+        : type === "library" ? "cała biblioteka" : "pakiet";
+
+      const buyerEmail = session.customer_details?.email;
+
+      if (isNewUser && buyerEmail) {
         const token = crypto.randomUUID();
         const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
         await db.insert(passwordResetTokens).values({ token, userId, expiresAt });
 
-        const productName = type === "series" && meta.seriesId
-          ? (await db.select({ title: series.title }).from(series).where(eq(series.id, meta.seriesId)).limit(1))[0]?.title ?? "kurs"
-          : type === "library" ? "cała biblioteka" : "pakiet";
-
         await sendSetPasswordEmail({
-          to: session.customer_details!.email!,
+          to: buyerEmail,
           token,
+          productName,
+        });
+      } else if (buyerEmail) {
+        await sendPurchaseConfirmationEmail({
+          to: buyerEmail,
           productName,
         });
       }
