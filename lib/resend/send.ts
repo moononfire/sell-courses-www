@@ -4,6 +4,7 @@ import { WelcomeEmail } from "./emails/welcome";
 import { SetPasswordEmail } from "./emails/set-password";
 import { PurchaseConfirmationEmail } from "./emails/purchase-confirmation";
 import { RedeemCodeEmail } from "./emails/redeem-code";
+import { ResetPasswordEmail } from "./emails/reset-password";
 
 interface SendWelcomeEmailParams {
   to: string;
@@ -76,6 +77,19 @@ export async function sendSetPasswordEmail({ to, token, productName }: SendSetPa
     from: process.env.RESEND_FROM_EMAIL!,
     to,
     subject: "Zakup potwierdzony — ustaw hasło",
+    html,
+  });
+}
+
+export async function sendPasswordResetEmail({ to, token }: { to: string; token: string }) {
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
+  const resetUrl = `${appUrl}/set-password?token=${token}&reset=1`;
+  const html = await render(ResetPasswordEmail({ resetUrl }));
+
+  return getResend().emails.send({
+    from: process.env.RESEND_FROM_EMAIL!,
+    to,
+    subject: "Reset hasła",
     html,
   });
 }

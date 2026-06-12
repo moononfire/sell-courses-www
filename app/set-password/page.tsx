@@ -8,6 +8,7 @@ function SetPasswordForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const token = searchParams.get("token") ?? "";
+  const isReset = searchParams.get("reset") === "1";
 
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -46,15 +47,21 @@ function SetPasswordForm() {
       return;
     }
 
-    // Fetch email from token — need to sign in; we don't have it here
-    // Instead redirect to sign-in with success message
-    router.push("/sign-in?setup=1");
+    if (data.email) {
+      await signIn("credentials", { email: data.email, password, redirect: false });
+      router.push("/dashboard");
+      router.refresh();
+    } else {
+      router.push("/sign-in?setup=1");
+    }
   }
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       <div className="space-y-1">
-        <label className="text-sm font-medium" htmlFor="password">Hasło (min. 8 znaków)</label>
+        <label className="text-sm font-medium" htmlFor="password">
+          {isReset ? "Nowe hasło (min. 8 znaków)" : "Hasło (min. 8 znaków)"}
+        </label>
         <input
           id="password"
           name="password"
@@ -83,7 +90,9 @@ function SetPasswordForm() {
         disabled={loading}
         className="w-full rounded-lg bg-primary py-2 text-sm font-semibold text-primary-foreground hover:bg-primary/90 disabled:opacity-60 transition-colors"
       >
-        {loading ? "Zapisywanie…" : "Ustaw hasło i przejdź do kursów"}
+        {loading
+          ? "Zapisywanie…"
+          : isReset ? "Zapisz nowe hasło" : "Ustaw hasło i przejdź do kursów"}
       </button>
     </form>
   );
@@ -93,14 +102,29 @@ export default function SetPasswordPage() {
   return (
     <main className="min-h-screen flex items-center justify-center px-6">
       <div className="w-full max-w-sm space-y-6">
-        <div className="space-y-1">
-          <h1 className="text-2xl font-bold">Ustaw hasło</h1>
-          <p className="text-sm text-muted-foreground">Konto zostało utworzone — ustaw hasło aby zalogować się.</p>
-        </div>
+        <Suspense fallback={null}>
+          <SetPasswordHeader />
+        </Suspense>
         <Suspense>
           <SetPasswordForm />
         </Suspense>
       </div>
     </main>
+  );
+}
+
+function SetPasswordHeader() {
+  const searchParams = useSearchParams();
+  const isReset = searchParams.get("reset") === "1";
+
+  return (
+    <div className="space-y-1">
+      <h1 className="text-2xl font-bold">{isReset ? "Nowe hasło" : "Ustaw hasło"}</h1>
+      <p className="text-sm text-muted-foreground">
+        {isReset
+          ? "Wpisz nowe hasło do swojego konta."
+          : "Konto zostało utworzone — ustaw hasło aby zalogować się."}
+      </p>
+    </div>
   );
 }

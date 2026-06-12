@@ -56,7 +56,12 @@ function SignInForm() {
             />
           </div>
           <div className="space-y-1">
-            <label className="text-sm font-medium" htmlFor="password">Hasło</label>
+            <div className="flex items-center justify-between">
+              <label className="text-sm font-medium" htmlFor="password">Hasło</label>
+              <Link href="/forgot-password" className="text-xs text-muted-foreground hover:text-primary">
+                Zapomniałeś hasła?
+              </Link>
+            </div>
             <input
               id="password"
               name="password"
