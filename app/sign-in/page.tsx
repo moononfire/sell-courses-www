@@ -10,6 +10,7 @@ function SignInForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const callbackUrl = searchParams.get("callbackUrl") ?? "/dashboard";
+  const setup = searchParams.get("setup") === "1";
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -37,7 +38,10 @@ function SignInForm() {
       <div className="w-full max-w-sm space-y-6">
         <div className="space-y-1">
           <h1 className="text-2xl font-bold">Zaloguj się</h1>
-          <p className="text-sm text-muted-foreground">Podaj email i hasło</p>
+          {setup
+            ? <p className="text-sm text-green-600">Hasło ustawione! Zaloguj się aby przejść do kursów.</p>
+            : <p className="text-sm text-muted-foreground">Podaj email i hasło</p>
+          }
         </div>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-1">

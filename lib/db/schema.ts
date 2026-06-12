@@ -65,3 +65,9 @@ export const purchaseSeriesAccess = pgTable("purchase_series_access", {
   purchaseId: text("purchase_id").notNull().references(() => purchases.id, { onDelete: "cascade" }),
   seriesId: text("series_id").notNull().references(() => series.id),
 });
+
+export const passwordResetTokens = pgTable("password_reset_tokens", {
+  token: text("token").primaryKey(),
+  userId: text("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  expiresAt: timestamp("expires_at").notNull(),
+});

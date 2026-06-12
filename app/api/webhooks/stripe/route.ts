@@ -2,8 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import type Stripe from "stripe";
 import { getStripe } from "@/lib/stripe/client";
 import { db } from "@/lib/db";
-import { purchases, purchaseSeriesAccess, bundleSeries, series } from "@/lib/db/schema";
+import { purchases, purchaseSeriesAccess, bundleSeries, series, users, passwordResetTokens } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
+import { sendSetPasswordEmail } from "@/lib/resend/send";
 
 export async function POST(request: NextRequest) {
   const body = await request.text();
@@ -25,12 +26,33 @@ export async function POST(request: NextRequest) {
     if (event.type === "checkout.session.completed") {
       const session = event.data.object as Stripe.Checkout.Session;
       const meta = session.metadata ?? {};
-      const userId = meta.userId;
       const type = meta.type as "library" | "series" | "bundle";
 
-      if (!userId || !type) {
-        console.error("Missing metadata", meta);
+      if (!type) {
+        console.error("Missing type in metadata", meta);
         return NextResponse.json({ received: true });
+      }
+
+      // Resolve userId — from metadata (logged-in) or find/create by email (guest)
+      let userId = meta.userId ?? null;
+      let isNewUser = false;
+
+      if (!userId) {
+        const email = session.customer_details?.email;
+        if (!email) {
+          console.error("No userId in metadata and no email from Stripe", session.id);
+          return NextResponse.json({ received: true });
+        }
+
+        const [existing] = await db.select({ id: users.id }).from(users).where(eq(users.email, email)).limit(1);
+        if (existing) {
+          userId = existing.id;
+        } else {
+          const newId = crypto.randomUUID();
+          await db.insert(users).values({ id: newId, email, name: session.customer_details?.name ?? null });
+          userId = newId;
+          isNewUser = true;
+        }
       }
 
       const amountCents = session.amount_total ?? 0;
@@ -51,10 +73,7 @@ export async function POST(request: NextRequest) {
       });
 
       if (type === "series" && meta.seriesId) {
-        await db.insert(purchaseSeriesAccess).values({
-          purchaseId,
-          seriesId: meta.seriesId,
-        });
+        await db.insert(purchaseSeriesAccess).values({ purchaseId, seriesId: meta.seriesId });
       } else if (type === "bundle" && meta.bundleId) {
         const rows = await db
           .select({ seriesId: bundleSeries.seriesId })
@@ -73,6 +92,23 @@ export async function POST(request: NextRequest) {
             allSeries.map((s) => ({ purchaseId, seriesId: s.id }))
           );
         }
+      }
+
+      // Send set-password email for new (guest) users
+      if (isNewUser) {
+        const token = crypto.randomUUID();
+        const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
+        await db.insert(passwordResetTokens).values({ token, userId, expiresAt });
+
+        const productName = type === "series" && meta.seriesId
+          ? (await db.select({ title: series.title }).from(series).where(eq(series.id, meta.seriesId)).limit(1))[0]?.title ?? "kurs"
+          : type === "library" ? "cała biblioteka" : "pakiet";
+
+        await sendSetPasswordEmail({
+          to: session.customer_details!.email!,
+          token,
+          productName,
+        });
       }
     }
   } catch (err) {

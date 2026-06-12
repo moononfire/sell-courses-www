@@ -1,7 +1,11 @@
 import Link from "next/link";
 import { Header } from "@/components/header";
+import { auth } from "@/auth";
 
-export default function CheckoutSuccessPage() {
+export default async function CheckoutSuccessPage() {
+  const session = await auth();
+  const isLoggedIn = !!session?.user;
+
   return (
     <>
       <Header />
@@ -13,15 +17,35 @@ export default function CheckoutSuccessPage() {
             </svg>
           </div>
           <h1 className="text-2xl font-bold">Zakup zakończony!</h1>
-          <p className="text-muted-foreground">
-            Dziękujemy za zakup. Dostęp do kursów jest już aktywny.
-          </p>
-          <Link
-            href="/dashboard"
-            className="inline-block rounded-lg bg-primary px-6 py-3 font-semibold text-primary-foreground hover:bg-primary/90 transition-colors"
-          >
-            Przejdź do moich kursów
-          </Link>
+          {isLoggedIn ? (
+            <>
+              <p className="text-muted-foreground">
+                Dziękujemy za zakup. Dostęp do kursów jest już aktywny.
+              </p>
+              <Link
+                href="/dashboard"
+                className="inline-block rounded-lg bg-primary px-6 py-3 font-semibold text-primary-foreground hover:bg-primary/90 transition-colors"
+              >
+                Przejdź do moich kursów
+              </Link>
+            </>
+          ) : (
+            <>
+              <p className="text-muted-foreground">
+                Dziękujemy! Wysłaliśmy Ci email z linkiem do ustawienia hasła.
+                Kliknij go aby aktywować konto i uzyskać dostęp do kursów.
+              </p>
+              <p className="text-sm text-muted-foreground">
+                Nie dostałeś/aś emaila? Sprawdź folder spam.
+              </p>
+              <Link
+                href="/sign-in"
+                className="inline-block rounded-lg bg-primary px-6 py-3 font-semibold text-primary-foreground hover:bg-primary/90 transition-colors"
+              >
+                Zaloguj się
+              </Link>
+            </>
+          )}
         </div>
       </main>
     </>

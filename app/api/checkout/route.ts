@@ -7,8 +7,7 @@ import { getStripe } from "@/lib/stripe/client";
 
 export async function POST(req: NextRequest) {
   const session = await auth();
-  const userId = session?.user?.id;
-  if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const userId = session?.user?.id ?? null;
 
   const { type, seriesId, bundleId } = await req.json() as {
     type: "library" | "series" | "bundle";
@@ -21,7 +20,8 @@ export async function POST(req: NextRequest) {
 
   let name: string;
   let amountCents: number;
-  const metadata: Record<string, string> = { userId, type };
+  const metadata: Record<string, string> = { type };
+  if (userId) metadata.userId = userId;
 
   if (type === "series" && seriesId) {
     const [s] = await db.select().from(series).where(eq(series.id, seriesId)).limit(1);
@@ -46,6 +46,7 @@ export async function POST(req: NextRequest) {
     mode: "payment",
     line_items: [{ price_data: { currency: "pln", product_data: { name }, unit_amount: amountCents }, quantity: 1 }],
     metadata,
+    customer_creation: "always",
     success_url: `${appUrl}/checkout/success?session_id={CHECKOUT_SESSION_ID}`,
     cancel_url: `${appUrl}/checkout/cancel`,
   });
