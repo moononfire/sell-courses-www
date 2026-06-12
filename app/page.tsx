@@ -1,193 +1,165 @@
-import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import Link from "next/link";
+import { Header } from "@/components/header";
+import { db } from "@/lib/db";
+import { series, episodes } from "@/lib/db/schema";
+import { sql } from "drizzle-orm";
+import { formatPrice } from "@/lib/utils";
 
-const steps = [
-  {
-    n: 1,
-    title: "Clone & install",
-    code: "git clone https://github.com/starlinkee/webapp-template.git && npm install",
-  },
-  {
-    n: 2,
-    title: "Zmienne środowiskowe",
-    code: "cp .env.example .env.local",
-    note: "Uzupełnij klucze — instrukcja poniżej.",
-  },
-  {
-    n: 3,
-    title: "Supabase (opcjonalnie)",
-    note: "Utwórz projekt → wklej URL + klucze → npm run db:push",
-  },
-  {
-    n: 4,
-    title: "Stripe",
-    note: "Utwórz produkt/cenę w Dashboard → wklej klucze → skonfiguruj webhook.",
-    code: "npm run stripe:listen",
-  },
-  {
-    n: 5,
-    title: "Resend",
-    note: "Zweryfikuj domenę w DNS → wklej RESEND_API_KEY.",
-  },
-  {
-    n: 6,
-    title: "Vercel env sync",
-    note: "Uzupełnij VERCEL_ACCESS_TOKEN + VERCEL_PROJECT_ID w .env.local.",
-    code: "npm run vercel:env",
-  },
-  {
-    n: 7,
-    title: "Deploy",
-    code: "git push origin master",
-    note: "Vercel auto-deployuje po każdym pushu do main.",
-  },
-];
+async function getSeriesWithEpisodeCount() {
+  try {
+    const rows = await db
+      .select({
+        id: series.id,
+        slug: series.slug,
+        title: series.title,
+        description: series.description,
+        thumbnailUrl: series.thumbnailUrl,
+        priceCents: series.priceCents,
+        episodeCount: sql<number>`count(${episodes.id})::int`,
+      })
+      .from(series)
+      .leftJoin(episodes, sql`${episodes.seriesId} = ${series.id}`)
+      .where(sql`${series.publishedAt} is not null`)
+      .groupBy(series.id)
+      .orderBy(series.position);
+    return rows;
+  } catch {
+    return [];
+  }
+}
 
-const envGroups = [
-  {
-    label: "Supabase",
-    vars: [
-      "NEXT_PUBLIC_SUPABASE_URL",
-      "NEXT_PUBLIC_SUPABASE_ANON_KEY",
-      "SUPABASE_SERVICE_ROLE_KEY",
-    ],
-    optional: true,
-  },
-  {
-    label: "Stripe",
-    vars: [
-      "STRIPE_SECRET_KEY",
-      "NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY",
-      "STRIPE_WEBHOOK_SECRET",
-      "STRIPE_PRICE_ID",
-    ],
-    optional: false,
-  },
-  {
-    label: "Resend",
-    vars: ["RESEND_API_KEY", "RESEND_FROM_EMAIL"],
-    optional: false,
-  },
-  {
-    label: "Vercel",
-    vars: ["VERCEL_ACCESS_TOKEN", "VERCEL_PROJECT_ID", "VERCEL_TEAM_ID"],
-    optional: false,
-  },
-];
+export default async function HomePage() {
+  const allSeries = await getSeriesWithEpisodeCount();
 
-export default function Home() {
   return (
-    <main className="min-h-screen bg-background px-6 py-16">
-      <div className="mx-auto max-w-2xl space-y-12">
+    <>
+      <Header />
+      <main>
+        {/* Hero */}
+        <section className="bg-background py-24 px-6">
+          <div className="mx-auto max-w-3xl text-center space-y-6">
+            <h1 className="text-4xl sm:text-5xl font-bold tracking-tight">
+              Naucz się programowania<br />
+              <span className="text-primary">bez zbędnego bałaganu</span>
+            </h1>
+            <p className="text-lg text-muted-foreground max-w-xl mx-auto">
+              Praktyczne kursy wideo — kup jedną serię, bundle lub całą bibliotekę.
+              Bez subskrypcji, bez limitów czasowych.
+            </p>
+            <div className="flex flex-col sm:flex-row gap-3 justify-center">
+              <Link
+                href="/series"
+                className="rounded-lg bg-primary px-6 py-3 text-base font-semibold text-primary-foreground hover:bg-primary/90 transition-colors"
+              >
+                Przeglądaj kursy
+              </Link>
+              <Link
+                href="#jak-to-dziala"
+                className="rounded-lg border px-6 py-3 text-base font-semibold hover:bg-muted transition-colors"
+              >
+                Jak to działa?
+              </Link>
+            </div>
+          </div>
+        </section>
 
-        {/* Header */}
-        <div className="space-y-2">
-          <h1 className="text-3xl font-semibold tracking-tight">webapp-template</h1>
-          <p className="text-muted-foreground">
-            Baza pod każdy projekt SaaS. Nadpisz{" "}
-            <code className="rounded bg-muted px-1 py-0.5 text-sm font-mono">app/page.tsx</code>{" "}
-            własną landing page i zacznij budować.
-          </p>
-          <a
-            href="https://github.com/starlinkee/webapp-template"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
-          >
-            <svg viewBox="0 0 24 24" className="h-4 w-4 fill-current" aria-hidden="true">
-              <path d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0 1 12 6.844a9.59 9.59 0 0 1 2.504.337c1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.02 10.02 0 0 0 22 12.017C22 6.484 17.522 2 12 2z" />
-            </svg>
-            starlinkee/webapp-template
-          </a>
-          <div className="flex flex-wrap gap-2 pt-1">
-            {["Next.js 16", "TypeScript", "Tailwind v4", "Supabase", "Stripe", "Resend"].map(
-              (t) => (
-                <Badge key={t} variant="secondary">
-                  {t}
-                </Badge>
-              )
-            )}
+        {/* Series catalog */}
+        {allSeries.length > 0 && (
+          <section className="py-16 px-6 bg-muted/30">
+            <div className="mx-auto max-w-6xl">
+              <h2 className="text-2xl font-bold mb-8">Nasze serie</h2>
+              <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+                {allSeries.map((s) => (
+                  <Link key={s.id} href={`/series/${s.slug}`} className="group rounded-xl border bg-background overflow-hidden hover:shadow-md transition-shadow">
+                    {s.thumbnailUrl ? (
+                      <img
+                        src={s.thumbnailUrl}
+                        alt={s.title}
+                        className="w-full aspect-video object-cover"
+                      />
+                    ) : (
+                      <div className="w-full aspect-video bg-muted flex items-center justify-center text-muted-foreground text-sm">
+                        Brak miniatury
+                      </div>
+                    )}
+                    <div className="p-4 space-y-2">
+                      <h3 className="font-semibold group-hover:text-primary transition-colors">{s.title}</h3>
+                      {s.description && (
+                        <p className="text-sm text-muted-foreground line-clamp-2">{s.description}</p>
+                      )}
+                      <div className="flex items-center justify-between text-sm pt-1">
+                        <span className="text-muted-foreground">{s.episodeCount} odcinków</span>
+                        <span className="font-semibold">{formatPrice(s.priceCents)}</span>
+                      </div>
+                    </div>
+                  </Link>
+                ))}
+              </div>
+              <div className="mt-8 text-center">
+                <Link href="/series" className="text-sm text-muted-foreground hover:text-foreground transition-colors underline underline-offset-4">
+                  Zobacz wszystkie serie →
+                </Link>
+              </div>
+            </div>
+          </section>
+        )}
+
+        {/* How it works */}
+        <section id="jak-to-dziala" className="py-16 px-6">
+          <div className="mx-auto max-w-4xl">
+            <h2 className="text-2xl font-bold mb-10 text-center">Jak to działa?</h2>
+            <div className="grid gap-8 sm:grid-cols-3">
+              {[
+                {
+                  step: "1",
+                  title: "Przeglądaj",
+                  desc: "Obejrzyj darmowy pierwszy odcinek każdej serii. Oceń, czy to dla Ciebie.",
+                },
+                {
+                  step: "2",
+                  title: "Kup",
+                  desc: "Wybierz jedną serię, bundle kilku serii lub całą bibliotekę. Jednorazowa płatność.",
+                },
+                {
+                  step: "3",
+                  title: "Oglądaj",
+                  desc: "Natychmiastowy dostęp do zakupionych treści. Na zawsze, w swoim tempie.",
+                },
+              ].map((item) => (
+                <div key={item.step} className="text-center space-y-3">
+                  <div className="mx-auto w-12 h-12 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-xl font-bold">
+                    {item.step}
+                  </div>
+                  <h3 className="font-semibold text-lg">{item.title}</h3>
+                  <p className="text-sm text-muted-foreground">{item.desc}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* About */}
+        <section className="py-16 px-6 bg-muted/30">
+          <div className="mx-auto max-w-2xl text-center space-y-4">
+            <h2 className="text-2xl font-bold">O autorze</h2>
+            <p className="text-muted-foreground">
+              Tworzę praktyczne kursy programowania skupione na rzeczach, które naprawdę mają znaczenie w codziennej pracy.
+              Bez lania wody, bez akademickiego podejścia — tylko konkretna wiedza, którą możesz zastosować od razu.
+            </p>
+          </div>
+        </section>
+      </main>
+
+      {/* Footer */}
+      <footer className="border-t mt-auto py-8 px-6 text-sm text-muted-foreground">
+        <div className="mx-auto max-w-6xl flex flex-col sm:flex-row items-center justify-between gap-4">
+          <span>© {new Date().getFullYear()} Kursy wideo</span>
+          <div className="flex gap-6">
+            <Link href="/series" className="hover:text-foreground transition-colors">Kursy</Link>
+            <Link href="/sign-in" className="hover:text-foreground transition-colors">Logowanie</Link>
           </div>
         </div>
-
-        {/* Setup steps */}
-        <section className="space-y-4">
-          <h2 className="text-lg font-semibold">Setup w 7 krokach</h2>
-          <ol className="space-y-3">
-            {steps.map((s) => (
-              <li key={s.n} className="flex gap-4">
-                <span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary text-xs font-semibold text-primary-foreground">
-                  {s.n}
-                </span>
-                <div className="space-y-1">
-                  <p className="font-medium leading-snug">{s.title}</p>
-                  {s.note && (
-                    <p className="text-sm text-muted-foreground">{s.note}</p>
-                  )}
-                  {s.code && (
-                    <code className="block rounded bg-muted px-3 py-1.5 text-sm font-mono">
-                      {s.code}
-                    </code>
-                  )}
-                </div>
-              </li>
-            ))}
-          </ol>
-        </section>
-
-        {/* Env vars reference */}
-        <section className="space-y-4">
-          <h2 className="text-lg font-semibold">Zmienne środowiskowe</h2>
-          <div className="grid gap-4 sm:grid-cols-2">
-            {envGroups.map((g) => (
-              <Card key={g.label}>
-                <CardHeader className="pb-2">
-                  <CardTitle className="flex items-center gap-2 text-sm">
-                    {g.label}
-                    {g.optional && (
-                      <Badge variant="outline" className="text-xs font-normal">
-                        opcjonalne
-                      </Badge>
-                    )}
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <ul className="space-y-1">
-                    {g.vars.map((v) => (
-                      <li key={v}>
-                        <code className="text-xs font-mono text-muted-foreground">{v}</code>
-                      </li>
-                    ))}
-                  </ul>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        </section>
-
-        {/* Commands */}
-        <section className="space-y-4">
-          <h2 className="text-lg font-semibold">Komendy</h2>
-          <div className="rounded-lg border bg-muted/40 divide-y divide-border text-sm font-mono">
-            {[
-              ["npm run dev", "serwer deweloperski"],
-              ["npm run build", "build produkcyjny"],
-              ["npm run typecheck", "sprawdzenie typów"],
-              ["npm run lint", "linter"],
-              ["npm run db:types", "generowanie typów Supabase"],
-              ["npm run db:push", "migracje do Supabase"],
-              ["npm run stripe:listen", "przekierowanie webhooków Stripe na localhost"],
-              ["npm run vercel:env", "push zmiennych do Vercel przez API"],
-            ].map(([cmd, desc]) => (
-              <div key={cmd} className="flex items-center justify-between gap-4 px-4 py-2.5">
-                <span className="text-foreground">{cmd}</span>
-                <span className="text-right text-xs text-muted-foreground">{desc}</span>
-              </div>
-            ))}
-          </div>
-        </section>
-
-      </div>
-    </main>
+      </footer>
+    </>
   );
 }
