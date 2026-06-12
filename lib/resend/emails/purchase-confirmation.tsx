@@ -28,11 +28,11 @@ export function PurchaseConfirmationEmail({ productName, dashboardUrl }: Purchas
             Twój zakup <strong>{productName}</strong> został potwierdzony.
           </Text>
           <Text style={text}>
-            Możesz teraz przejść do swojego konta i rozpocząć naukę.
+            Zaloguj się do swojego konta, aby rozpocząć naukę.
           </Text>
           <Section style={buttonContainer}>
             <Button href={dashboardUrl} style={button}>
-              Przejdź do kursu
+              Zaloguj się i przejdź do kursu
             </Button>
           </Section>
           <Hr style={hr} />

@@ -33,7 +33,7 @@ interface SendPurchaseConfirmationEmailParams {
 
 export async function sendPurchaseConfirmationEmail({ to, productName }: SendPurchaseConfirmationEmailParams) {
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
-  const dashboardUrl = `${appUrl}/dashboard`;
+  const dashboardUrl = `${appUrl}/sign-in?callbackUrl=/dashboard`;
   const html = await render(PurchaseConfirmationEmail({ productName, dashboardUrl }));
 
   return getResend().emails.send({
