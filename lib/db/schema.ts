@@ -71,3 +71,17 @@ export const passwordResetTokens = pgTable("password_reset_tokens", {
   userId: text("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
   expiresAt: timestamp("expires_at").notNull(),
 });
+
+export const redeemCodes = pgTable("redeem_codes", {
+  code: text("code").primaryKey(),
+  email: text("email").notNull(),
+  type: purchaseTypeEnum("type").notNull(),
+  seriesId: text("series_id").references(() => series.id),
+  bundleId: text("bundle_id").references(() => bundles.id),
+  stripePaymentIntentId: text("stripe_payment_intent_id"),
+  amountCents: integer("amount_cents").notNull(),
+  redeemedByUserId: text("redeemed_by_user_id").references(() => users.id),
+  redeemedAt: timestamp("redeemed_at"),
+  expiresAt: timestamp("expires_at").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
